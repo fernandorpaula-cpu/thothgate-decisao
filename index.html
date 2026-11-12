@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>ThothGate � decis�o</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: #0b0d10; color: #e8eaed; font-family: -apple-system, system-ui, "Segoe UI", sans-serif; }
+  body { min-height: 100vh; padding: max(20px, env(safe-area-inset-top)) 20px max(24px, env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 18px; }
+  h1 { font-size: 20px; margin: 4px 0 0; font-weight: 650; }
+  .sub { color: #9aa0a6; font-size: 14px; line-height: 1.45; margin: 0; }
+  .card { background: #15181d; border: 1px solid #23272e; border-radius: 16px; padding: 16px; }
+  .id { font: 13px ui-monospace, Menlo, monospace; color: #8ab4f8; word-break: break-all; }
+  .track { position: relative; height: 64px; border-radius: 32px; background: #1c2128; border: 1px solid #2b313a; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; }
+  .fill { position: absolute; inset: 0 auto 0 0; width: 0; background: linear-gradient(90deg, #1e6b43, #2fa56b); }
+  .label { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 16px; color: #aab1ba; letter-spacing: .2px; pointer-events: none; padding-left: 56px; }
+  .knob { position: absolute; top: 4px; left: 4px; width: 54px; height: 54px; border-radius: 50%; background: #e8eaed; color: #0b0d10; display: grid; place-items: center; font-size: 24px; font-weight: 700; touch-action: none; cursor: grab; box-shadow: 0 2px 8px rgba(0,0,0,.5); }
+  .track.done .knob { background: #2fa56b; color: #fff; }
+  .row { display: flex; gap: 10px; }
+  button.deny { flex: 1; padding: 14px; border-radius: 14px; border: 1px solid #3a2226; background: #2a1618; color: #ff8a8a; font-size: 16px; }
+  .step { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; padding: 6px 0; color: #9aa0a6; }
+  .step .dot { width: 10px; height: 10px; border-radius: 50%; background: #3a3f47; margin-top: 5px; flex: none; }
+  .step.on { color: #e8eaed; } .step.on .dot { background: #2fa56b; }
+  .step.err { color: #ff8a8a; } .step.err .dot { background: #e5534b; }
+  .err-box { color: #ff8a8a; font-size: 14px; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+  <div>
+    <h1 id="titulo">Decis�o do ThothGate</h1>
+    <p class="sub" id="texto"></p>
+  </div>
+
+  <div class="card"><div class="id" id="acao"></div></div>
+
+  <div id="painel">
+    <div class="track" id="track" role="slider" aria-label="Deslize para confirmar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+      <div class="fill" id="fill"></div>
+      <div class="label" id="label">Deslize para confirmar</div>
+      <div class="knob" id="knob">></div>
+    </div>
+    <p class="sub" style="margin-top:10px">Arraste o c�rculo at� o fim. Soltar antes do fim cancela o gesto, nada � enviado.</p>
+    <div class="row" style="margin-top:14px"><button class="deny" id="nao">Negar</button></div>
+  </div>
+
+  <div class="card hidden" id="progresso">
+    <div class="step" id="s1"><span class="dot"></span><span>Resposta enviada ao canal</span></div>
+    <div class="step" id="s2"><span class="dot"></span><span>Recebida pelo computador</span></div>
+    <div class="step" id="s3"><span class="dot"></span><span>Resultado</span></div>
+    <div class="err-box hidden" id="erro"></div>
+  </div>
+
+<script>
+(function () {
+  "use strict";
+  // Par�metros v�m do fragmento (#), que n�o � enviado a nenhum servidor:
+  // i = id da decis�o, y = corpo do "sim", n = corpo do "n�o", r = canal de resposta, t = canal de avisos,
+  // h = t�tulo, m = texto curto.
+  var P = {};
+  (location.hash || "").replace(/^#/, "").split("&").forEach(function (kv) {
+    var i = kv.indexOf("="); if (i < 1) return;
+    try { P[kv.slice(0, i)] = decodeURIComponent(kv.slice(i + 1).replace(/\+/g, " ")); } catch (e) {}
+  });
+  var $ = function (id) { return document.getElementById(id); };
+  var BASE = "https://ntfy.sh/";
+  var okParams = P.y && P.n && P.r && /^[A-Za-z0-9_-]{8,80}$/.test(P.r) && (!P.t || /^[A-Za-z0-9_-]{8,80}$/.test(P.t));
+  if (P.h) { $("titulo").textContent = P.h.slice(0, 90); document.title = "ThothGate � " + P.h.slice(0, 40); }
+  if (P.m) $("texto").textContent = P.m.slice(0, 400);
+  $("acao").textContent = (P.i || "decis�o") + (P.y ? "  �  " + P.y.slice(0, 40) + (P.y.length > 40 ? "." : "") : "");
+
+  if (!okParams) {
+    $("painel").classList.add("hidden");
+    $("progresso").classList.remove("hidden");
+    $("s1").classList.add("err"); $("erro").classList.remove("hidden");
+    $("erro").textContent = "Link incompleto. Abra a decis�o pela notifica��o do ThothGate.";
+    return;
+  }
+
+  var track = $("track"), knob = $("knob"), fill = $("fill"), label = $("label");
+  var dragging = false, startX = 0, pos = 0, sent = false, max = 0;
+  function layout() { max = track.clientWidth - knob.offsetWidth - 8; }
+  function setPos(x) {
+    pos = Math.max(0, Math.min(max, x));
+    knob.style.transform = "translateX(" + pos + "px)";
+    fill.style.width = (pos + 58) + "px";
+    var pct = max > 0 ? Math.round(100 * pos / max) : 0;
+    track.setAttribute("aria-valuenow", String(pct));
+    label.style.opacity = String(Math.max(0, 1 - pct / 60));
+  }
+  function down(e) { if (sent) return; layout(); dragging = true; startX = e.clientX - pos; knob.setPointerCapture && knob.setPointerCapture(e.pointerId); knob.style.cursor = "grabbing"; e.preventDefault(); }
+  function move(e) { if (!dragging) return; setPos(e.clientX - startX); }
+  function up() {
+    if (!dragging) return; dragging = false; knob.style.cursor = "grab";
+    if (pos >= max * 0.96) { setPos(max); finish($("track"), P.y); }
+    else { knob.style.transition = fill.style.transition = "all .18s"; setPos(0); setTimeout(function () { knob.style.transition = fill.style.transition = ""; }, 220); }
+  }
+  knob.addEventListener("pointerdown", down);
+  window.addEventListener("pointermove", move);
+  window.addEventListener("pointerup", up);
+  window.addEventListener("pointercancel", up);
+  window.addEventListener("resize", layout);
+  layout(); setPos(0);
+
+  $("nao").addEventListener("click", function () { if (!sent) finish(null, P.n); });
+
+  function step(id, cls, text) { var el = $(id); el.className = "step " + cls; if (text) el.lastChild.textContent = text; }
+
+  function finish(trackEl, body) {
+    if (sent) return; sent = true;
+    if (trackEl) { trackEl.classList.add("done"); label.textContent = "Enviando."; label.style.opacity = "1"; }
+    $("nao").disabled = true;
+    $("progresso").classList.remove("hidden");
+    var t0 = Date.now();
+    fetch(BASE + P.r, { method: "POST", body: body, headers: { "Content-Type": "text/plain" } })
+      .then(function (r) {
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        step("s1", "on", "Resposta enviada ao canal"); if (trackEl) label.textContent = "Enviado V";
+        watch(t0);
+      })
+      .catch(function (e) {
+        step("s1", "err", "Falha ao enviar: " + (e && e.message ? e.message : "rede"));
+        $("erro").classList.remove("hidden"); $("erro").textContent = "Nada foi executado. Verifique a internet e abra a notifica��o de novo.";
+        sent = false; if (trackEl) { trackEl.classList.remove("done"); setPos(0); label.textContent = "Deslize para confirmar"; } $("nao").disabled = false;
+      });
+  }
+
+  // Acompanha os avisos do computador (canal t) por at� 3 minutos, para voc� ver o processo andando.
+  function watch(t0) {
+    if (!P.t || !window.EventSource) { step("s2", "", "Recebida pelo computador (acompanhe pelas notifica��es)"); return; }
+    var es = new EventSource(BASE + P.t + "/sse?since=" + Math.floor(t0 / 1000));
+    var got = false;
+    es.onmessage = function (ev) {
+      var d; try { d = JSON.parse(ev.data); } catch (e) { return; }
+      if (d.event !== "message") return;
+      var title = d.title || "", msg = d.message || "";
+      if (/resposta recebida/i.test(title)) { got = true; step("s2", "on", "Recebida pelo computador"); }
+      else if (!/avisos ativos|rodando/i.test(title)) { step("s2", "on", "Recebida pelo computador"); step("s3", /falh|recus|NAO|parou|erro/i.test(title + msg) ? "err" : "on", title + (msg ? " - " + msg.slice(0, 140) : "")); }
+    };
+    setTimeout(function () { es.close(); if (!got) step("s2", "", "Sem confirma��o do computador em 3 min (veja as notifica��es)"); }, 180000);
+  }
+})();
+</script>
+</body>
+</html>
