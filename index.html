@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
-<title>ThothGate � decis�o</title>
+<title>ThothGate · decisão</title>
 <style>
   :root { color-scheme: dark; }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -31,7 +31,7 @@
 </head>
 <body>
   <div>
-    <h1 id="titulo">Decis�o do ThothGate</h1>
+    <h1 id="titulo">Decisão do ThothGate</h1>
     <p class="sub" id="texto"></p>
   </div>
 
@@ -41,9 +41,9 @@
     <div class="track" id="track" role="slider" aria-label="Deslize para confirmar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
       <div class="fill" id="fill"></div>
       <div class="label" id="label">Deslize para confirmar</div>
-      <div class="knob" id="knob">></div>
+      <div class="knob" id="knob">›</div>
     </div>
-    <p class="sub" style="margin-top:10px">Arraste o c�rculo at� o fim. Soltar antes do fim cancela o gesto, nada � enviado.</p>
+    <p class="sub" style="margin-top:10px">Arraste o círculo até o fim. Soltar antes do fim cancela o gesto, nada é enviado.</p>
     <div class="row" style="margin-top:14px"><button class="deny" id="nao">Negar</button></div>
   </div>
 
@@ -57,9 +57,9 @@
 <script>
 (function () {
   "use strict";
-  // Par�metros v�m do fragmento (#), que n�o � enviado a nenhum servidor:
-  // i = id da decis�o, y = corpo do "sim", n = corpo do "n�o", r = canal de resposta, t = canal de avisos,
-  // h = t�tulo, m = texto curto.
+  // Parâmetros vêm do fragmento (#), que não é enviado a nenhum servidor:
+  // i = id da decisão, y = corpo do "sim", n = corpo do "não", r = canal de resposta, t = canal de avisos,
+  // h = título, m = texto curto.
   var P = {};
   (location.hash || "").replace(/^#/, "").split("&").forEach(function (kv) {
     var i = kv.indexOf("="); if (i < 1) return;
@@ -68,15 +68,15 @@
   var $ = function (id) { return document.getElementById(id); };
   var BASE = "https://ntfy.sh/";
   var okParams = P.y && P.n && P.r && /^[A-Za-z0-9_-]{8,80}$/.test(P.r) && (!P.t || /^[A-Za-z0-9_-]{8,80}$/.test(P.t));
-  if (P.h) { $("titulo").textContent = P.h.slice(0, 90); document.title = "ThothGate � " + P.h.slice(0, 40); }
+  if (P.h) { $("titulo").textContent = P.h.slice(0, 90); document.title = "ThothGate · " + P.h.slice(0, 40); }
   if (P.m) $("texto").textContent = P.m.slice(0, 400);
-  $("acao").textContent = (P.i || "decis�o") + (P.y ? "  �  " + P.y.slice(0, 40) + (P.y.length > 40 ? "." : "") : "");
+  $("acao").textContent = (P.i || "decisão") + (P.y ? "  ·  " + P.y.slice(0, 40) + (P.y.length > 40 ? "…" : "") : "");
 
   if (!okParams) {
     $("painel").classList.add("hidden");
     $("progresso").classList.remove("hidden");
     $("s1").classList.add("err"); $("erro").classList.remove("hidden");
-    $("erro").textContent = "Link incompleto. Abra a decis�o pela notifica��o do ThothGate.";
+    $("erro").textContent = "Link incompleto. Abra a decisão pela notificação do ThothGate.";
     return;
   }
 
@@ -111,26 +111,26 @@
 
   function finish(trackEl, body) {
     if (sent) return; sent = true;
-    if (trackEl) { trackEl.classList.add("done"); label.textContent = "Enviando."; label.style.opacity = "1"; }
+    if (trackEl) { trackEl.classList.add("done"); label.textContent = "Enviando…"; label.style.opacity = "1"; }
     $("nao").disabled = true;
     $("progresso").classList.remove("hidden");
     var t0 = Date.now();
     fetch(BASE + P.r, { method: "POST", body: body, headers: { "Content-Type": "text/plain" } })
       .then(function (r) {
         if (!r.ok) throw new Error("HTTP " + r.status);
-        step("s1", "on", "Resposta enviada ao canal"); if (trackEl) label.textContent = "Enviado V";
+        step("s1", "on", "Resposta enviada ao canal"); if (trackEl) label.textContent = "Enviado ✓";
         watch(t0);
       })
       .catch(function (e) {
         step("s1", "err", "Falha ao enviar: " + (e && e.message ? e.message : "rede"));
-        $("erro").classList.remove("hidden"); $("erro").textContent = "Nada foi executado. Verifique a internet e abra a notifica��o de novo.";
+        $("erro").classList.remove("hidden"); $("erro").textContent = "Nada foi executado. Verifique a internet e abra a notificação de novo.";
         sent = false; if (trackEl) { trackEl.classList.remove("done"); setPos(0); label.textContent = "Deslize para confirmar"; } $("nao").disabled = false;
       });
   }
 
-  // Acompanha os avisos do computador (canal t) por at� 3 minutos, para voc� ver o processo andando.
+  // Acompanha os avisos do computador (canal t) por até 3 minutos, para você ver o processo andando.
   function watch(t0) {
-    if (!P.t || !window.EventSource) { step("s2", "", "Recebida pelo computador (acompanhe pelas notifica��es)"); return; }
+    if (!P.t || !window.EventSource) { step("s2", "", "Recebida pelo computador (acompanhe pelas notificações)"); return; }
     var es = new EventSource(BASE + P.t + "/sse?since=" + Math.floor(t0 / 1000));
     var got = false;
     es.onmessage = function (ev) {
@@ -138,9 +138,9 @@
       if (d.event !== "message") return;
       var title = d.title || "", msg = d.message || "";
       if (/resposta recebida/i.test(title)) { got = true; step("s2", "on", "Recebida pelo computador"); }
-      else if (!/avisos ativos|rodando/i.test(title)) { step("s2", "on", "Recebida pelo computador"); step("s3", /falh|recus|NAO|parou|erro/i.test(title + msg) ? "err" : "on", title + (msg ? " - " + msg.slice(0, 140) : "")); }
+      else if (!/avisos ativos|rodando/i.test(title)) { step("s2", "on", "Recebida pelo computador"); step("s3", /falh|recus|NAO|parou|erro/i.test(title + msg) ? "err" : "on", title + (msg ? " — " + msg.slice(0, 140) : "")); }
     };
-    setTimeout(function () { es.close(); if (!got) step("s2", "", "Sem confirma��o do computador em 3 min (veja as notifica��es)"); }, 180000);
+    setTimeout(function () { es.close(); if (!got) step("s2", "", "Sem confirmação do computador em 3 min (veja as notificações)"); }, 180000);
   }
 })();
 </script>
